@@ -42,6 +42,7 @@ func (s *Server) AcceptCon() {
 			dotlog.Error(txtErr)
 			continue // So that we can receive con request otherwise loop will exit and no more con can be accepted
 		}
+		dotlog.Info("New connection from: " + fmt.Sprintf("%v", (con.RemoteAddr())))
 		go s.ReadCon(con)
 	}
 }
