@@ -1,22 +1,36 @@
-package server
+package main
 
 import (
 	"fmt"
 	"github.com/SpauriRosso/dotlog"
 	"net"
 	"runtime"
+	"time"
 )
 
 type Server struct {
 	Addr    string
 	Listnr  net.Listener
 	QuitChn chan struct{}
+	MsgChan chan []byte
+}
+
+func main() {
+	serv := NewServer(":3000")
+	go func() {
+		for msg := range serv.MsgChan {
+			res := fmt.Sprintf("[%v] [user] : %v", time.Now(), string(msg))
+			dotlog.Info(res)
+		}
+	}()
+	serv.StartServer()
 }
 
 func NewServer(Addr string) *Server {
 	return &Server{
 		Addr:    Addr,
 		QuitChn: make(chan struct{}),
+		MsgChan: make(chan []byte, 10),
 	}
 }
 
@@ -29,7 +43,9 @@ func (s *Server) StartServer() {
 	}
 	defer listnr.Close()
 	s.Listnr = listnr
+	go s.AcceptCon()
 	<-s.QuitChn
+	close(s.MsgChan)
 	return
 }
 
@@ -42,7 +58,7 @@ func (s *Server) AcceptCon() {
 			dotlog.Error(txtErr)
 			continue // So that we can receive con request otherwise loop will exit and no more con can be accepted
 		}
-		dotlog.Info("New connection from: " + fmt.Sprintf("%v", (con.RemoteAddr())))
+		dotlog.Info("New connection from: " + fmt.Sprintf("%v", con.RemoteAddr()))
 		go s.ReadCon(con)
 	}
 }
@@ -58,8 +74,8 @@ func (s *Server) ReadCon(con net.Conn) {
 			dotlog.Error(txtErr)
 			continue
 		}
-
-		msg := buf[:n]
-		dotlog.Info(string(msg))
+		//msg := buf[:n]
+		//dotlog.Info(string(msg))
+		s.MsgChan <- buf[:n]
 	}
 }
